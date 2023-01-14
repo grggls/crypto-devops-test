@@ -28,7 +28,8 @@ FROM golang:1.18-alpine AS gaiad-builder
 # Grab the cloned repo from STAGE.1
 COPY --from=gaia-downloader /src/gaia/ /src/gaia/
 
-# Copied with slight modifications from Gaia's Dockerfile
+# Copy the install procedure from Gaia's Dockerfile
+# https://github.com/cosmos/gaia/blob/main/Dockerfile
 WORKDIR /src/gaia/
 RUN go mod download
 
@@ -39,10 +40,26 @@ ENV PACKAGES $PACKAGES eudev-dev=3.2.11-r4 python3=3.10.9-r1
 RUN apk add --no-cache $PACKAGES && \
     CGO_ENABLED=0 make install
 
+# Do the init steps from the gaia quickstart guide
+# https://hub.cosmos.network/main/getting-started/quickstart.html
+RUN gaiad init CUSTOM_MONKEY --chain-id cosmoshub-4
+
+# Set minimum gas price & peers
+RUN sed -i'' 's/minimum-gas-prices = ""/minimum-gas-prices = "0.0025uatom"/' $HOME/.gaia/config/app.toml
+RUN sed -i'' 's/persistent_peers = ""/persistent_peers = '"\"$(curl -s https://raw.githubusercontent.com/cosmos/chain-registry/master/cosmoshub/chain.json | jq -r '[foreach .peers.seeds[] as $item (""; "\($item.id)@\($item.address)")] | join(",")')\""'/' $HOME/.gaia/config/config.toml
+
+# Configure State sync, grab a recent block height and hash
+RUN sed -i'' 's/enable = false/enable = true/' $HOME/.gaia/config/config.toml
+RUN sed -i'' 's/trust_height = 0/trust_height = 13661483/' $HOME/.gaia/config/config.toml
+RUN sed -i'' 's/trust_hash = ""/trust_hash = "B08A4F37082775988D2BDD0779C332AC964B15B55555E57AEA07F1D6E1E67F07"/' $HOME/.gaia/config/config.toml
+RUN sed -i'' 's/rpc_servers = ""/rpc_servers = "https:\/\/cosmos-rpc.polkachu.com:443,https:\/\/rpc-cosmoshub-ia.cosmosia.notional.ventures:443,https:\/\/rpc.cosmos.network:443"/' $HOME/.gaia/config/config.toml
+
 ## STAGE 3
 # Add to a distroless container
 FROM cgr.dev/chainguard/static:latest
 COPY --from=gaiad-builder /go/bin/gaiad /usr/local/bin/
+COPY --from=gaiad-builder /root/.gaia/ /root/.gaia
+
 EXPOSE 26656 26657 1317 9090
 USER 0
 
