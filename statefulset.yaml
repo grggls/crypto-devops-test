@@ -26,14 +26,27 @@ spec:
     app: gaiad
 ---
 apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-gaia
+  namespace: gaiad
+spec:
+  storageClassName: standard
+  accessModes:
+    - ReadWriteOnce
+  capacity:
+    storage: 2Gi
+  hostPath:
+    path: /root/.gaia
+---
+apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: local-path-pvc
+  name: pvc-gaia
   namespace: gaiad
 spec:
   accessModes:
     - ReadWriteOnce
-  storageClassName: local-path
   resources:
     requests:
       storage: 1Gi
@@ -57,24 +70,24 @@ spec:
       containers:
       - name: gaiad
         image: grggls/gaiad:latest
-        ports:
-        - containerPort: 26656
-          name: tendermint-p2p 
-        - containerPort: 26657
-          name: tendermint-rpc
-        - containerPort: 1317
-          name: light-client-daemon
-        - containerPort: 26660
-          name: prometheus 
-        volumeMounts:
-        - name: gaiad
-          mountPath: /root/.gaia
   volumeClaimTemplates:
   - metadata:
-      name: gaiad-pvc
+      name: pvc-gaia
     spec:
       accessModes: [ "ReadWriteOnce" ]
       resources:
         requests:
           storage: 1Gi
 
+#        ports:
+#        - containerPort: 26656
+#          name: tendermint-p2p 
+#        - containerPort: 26657
+#          name: tendermint-rpc
+#        - containerPort: 1317
+#          name: light-client-daemon
+#        - containerPort: 26660
+#          name: prometheus 
+#        volumeMounts:
+#        - name: gaiad
+#          mountPath: /root/.gaia

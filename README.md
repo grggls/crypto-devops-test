@@ -84,7 +84,7 @@ CVE-2022-28391          ssl_client-1.35.0-r29           High            1.35.0-r
 
 Upgraded the `golang:alpine` image in use as `gaiad-builder` in the buildchain. Confirmed that the solution still works and `gaiad` is running nominally. Ran it through anchore again and got a clean bill of health:
 ```
-> docker-compose exec api anchore-cli evaluate check grggls/gaiad:latest
+$ docker-compose exec api anchore-cli evaluate check grggls/gaiad:latest
 Image Digest: sha256:128b029a000d29351020c9ef54f3d59fce377bd6d42db1e69d3751d8b8589c8c
 Full Tag: docker.io/grggls/gaiad:latest
 Status: pass
@@ -92,8 +92,77 @@ Last Eval: 2023-01-15T12:30:20Z
 Policy ID: 2c53a13c-1765-11e8-82ef-23527761d060
 ```
 
-2. k8s FTW: Write a Kubernetes StatefulSet to run the above, using persistent volume claims and
-resource limits. [15 pts]
+2. k8s FTW: Write a Kubernetes StatefulSet to run the above, using persistent volume claims and resource limits. [15 pts]
+
+> Build a kind cluster with a local filesystem mount inside, then apply the k8s config for a volume and StatefulSet.
+```
+$ kind create cluster --config kind.yaml
+Creating cluster "gaia" ...
+ ✓ Ensuring node image (kindest/node:v1.25.3) 🖼
+ ✓ Preparing nodes 📦
+ ✓ Writing configuration 📜
+ ✓ Starting control-plane 🕹️
+ ✓ Installing CNI 🔌
+ ✓ Installing StorageClass 💾
+Set kubectl context to "kind-gaia"
+You can now use your cluster with:
+
+kubectl cluster-info --context kind-gaia
+ 
+$ kubectl apply -f ./statefulset.yaml
+namespace/gaiad created
+service/gaiad created
+persistentvolume/pv-gaia unchanged
+persistentvolumeclaim/pvc-gaia created
+statefulset.apps/gaiad created
+
+$ kubectl get pods -n gaiad
+NAME      READY   STATUS    RESTARTS   AGE
+gaiad-0   1/1     Running   0          15m
+gaiad-1   1/1     Running   0          15m
+
+$ kubectl get pvc -n gaiad
+NAME               STATUS    VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   AGE
+pvc-gaia           Pending                                                                        standard       36s
+pvc-gaia-gaiad-0   Bound     pvc-835d9388-81b9-4993-9f97-f953977f5d76   1Gi        RWO            standard       36s
+pvc-gaia-gaiad-1   Bound     pvc-dd5135d8-9239-447f-a9cc-2e73b0fb0c76   1Gi        RWO            standard       28s
+
+$ kubectl describe statefulset/gaiad -n gaiad
+Name:               gaiad
+Namespace:          gaiad
+CreationTimestamp:  Mon, 16 Jan 2023 10:15:37 +1100
+Selector:           app=gaiad
+Labels:             <none>
+Annotations:        <none>
+Replicas:           2 desired | 2 total
+Update Strategy:    RollingUpdate
+  Partition:        0
+Pods Status:        2 Running / 0 Waiting / 0 Succeeded / 0 Failed
+Pod Template:
+  Labels:  app=gaiad
+  Containers:
+   gaiad:
+    Image:        grggls/gaiad:latest
+    Port:         <none>
+    Host Port:    <none>
+    Environment:  <none>
+    Mounts:       <none>
+  Volumes:        <none>
+Volume Claims:
+  Name:          pvc-gaia
+  StorageClass:
+  Labels:        <none>
+  Annotations:   <none>
+  Capacity:      1Gi
+  Access Modes:  [ReadWriteOnce]
+Events:
+  Type    Reason            Age   From                    Message
+  ----    ------            ----  ----                    -------
+  Normal  SuccessfulCreate  11m   statefulset-controller  create Claim pvc-gaia-gaiad-0 Pod gaiad-0 in StatefulSet gaiad success
+  Normal  SuccessfulCreate  11m   statefulset-controller  create Pod gaiad-0 in StatefulSet gaiad successful
+  Normal  SuccessfulCreate  11m   statefulset-controller  create Claim pvc-gaia-gaiad-1 Pod gaiad-1 in StatefulSet gaiad success
+  Normal  SuccessfulCreate  11m   statefulset-controller  create Pod gaiad-1 in StatefulSet gaiad successful
+```
 
 3. All the observabilities: Alter the Gaia config file to enable prometheus metrics. Create a prometheus
 config or ServiceMonitor k8s resource to scrape the endpoint. [15 pts]
