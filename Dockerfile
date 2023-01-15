@@ -23,7 +23,7 @@ RUN apt-get update && \
 RUN git clone -b v7.1.0 https://github.com/cosmos/gaia.git
 
 ## STAGE 2
-FROM golang:1.18-alpine AS gaiad-builder
+FROM golang:1.19.5-alpine AS gaiad-builder
 
 # Grab the cloned repo from STAGE.1
 COPY --from=gaia-downloader /src/gaia/ /src/gaia/
