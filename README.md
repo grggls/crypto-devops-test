@@ -82,7 +82,7 @@ CVE-2022-28391          busybox-binsh-1.35.0-r29        High            1.35.0-r
 CVE-2022-28391          ssl_client-1.35.0-r29           High            1.35.0-r7        CVE-2022-28391        http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2022-28391        APKG        alpine:3.17        pkgdb
 ```
 
-Upgraded the `golang:alpine` image in use as `gaiad-builder` in the buildchain. Confirmed that the solution still works and `gaiad` is running nominally. Ran it through anchore again and got a clean bill of health:
+> Upgraded the `golang:alpine` image in use as `gaiad-builder` in the buildchain. Confirmed that the solution still works and `gaiad` is running nominally. Ran it through anchore again and got a clean bill of health:
 ```
 > docker-compose exec api anchore-cli evaluate check grggls/gaiad:latest
 Image Digest: sha256:128b029a000d29351020c9ef54f3d59fce377bd6d42db1e69d3751d8b8589c8c
