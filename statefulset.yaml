@@ -78,16 +78,3 @@ spec:
       resources:
         requests:
           storage: 1Gi
-
-#        ports:
-#        - containerPort: 26656
-#          name: tendermint-p2p 
-#        - containerPort: 26657
-#          name: tendermint-rpc
-#        - containerPort: 1317
-#          name: light-client-daemon
-#        - containerPort: 26660
-#          name: prometheus 
-#        volumeMounts:
-#        - name: gaiad
-#          mountPath: /root/.gaia

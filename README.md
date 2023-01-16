@@ -1,10 +1,7 @@
 # Crypto Devops Test
 
 ## 1. Dockerize:
-Write a Dockerfile to run Cosmos Gaia v7.1.0 (https://github.com/cosmos/gaia) in a
-container. It should download the source code, build it and run without any modifiers (i.e. docker run
-somerepo/gaia:v7.1.0 should run the daemon) as well as print its output to the console. The build
-should be security conscious (and ideally pass a container image security test such as Anchor). [20 pts]
+Write a Dockerfile to run Cosmos Gaia v7.1.0 (https://github.com/cosmos/gaia) in a container. It should download the source code, build it and run without any modifiers (i.e. docker run somerepo/gaia:v7.1.0 should run the daemon) as well as print its output to the console. The build should be security conscious (and ideally pass a container image security test such as Anchor). [20 pts]
 
 > Pull this repo and build the container. Tag it `gaiad`, if you please:
 ```
@@ -92,7 +89,7 @@ Last Eval: 2023-01-15T12:30:20Z
 Policy ID: 2c53a13c-1765-11e8-82ef-23527761d060
 ```
 
-2. k8s FTW: Write a Kubernetes StatefulSet to run the above, using persistent volume claims and resource limits. [15 pts]
+## 2. k8s FTW: Write a Kubernetes StatefulSet to run the above, using persistent volume claims and resource limits. [15 pts]
 
 > Build a kind cluster with a local filesystem mount inside, then apply the k8s config for a volume and StatefulSet.
 ```
@@ -179,10 +176,121 @@ $ kubectl describe pod/gaiad-0 -n gaiad | grep Image
     Image:          grggls/gaiad:latest
     Image ID:       docker.io/grggls/gaiad@sha256:3a4715a94a70d672c03e40c1a4d8dd215a3c83e88d33851347cb01a5fef8e86f
 ```
-> Repeat the process with the other container(s) in the StatefulSet and confirm they're running the latest version.
+> Repeat the process with the other container(s) in the StatefulSet and confirm they're running the latest version. Soon you'll be able to confirm that prometheus metrics are being exported from your pods:
+```
+$ kubectl get service -n gaiad
+NAME    TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)                                  AGE
+gaiad   ClusterIP   None         <none>        26656/TCP,26657/TCP,1317/TCP,26660/TCP   7h4m
 
-4. Script kiddies: Source or come up with a text manipulation problem and solve it with at least two of awk,
-sed, tr and / or grep. Check the question below first though, maybe. [10pts]
+$ kubectl port-forward svc/gaiad -n gaiad 26660:26660
+Forwarding from 127.0.0.1:26660 -> 26660
+Forwarding from [::1]:26660 -> 26660
+Handling connection for 26660
+Handling connection for 26660
+
+$ curl -s localhost:26660 | head
+# HELP go_gc_duration_seconds A summary of the pause duration of garbage collection cycles.
+# TYPE go_gc_duration_seconds summary
+go_gc_duration_seconds{quantile="0"} 2.5441e-05
+go_gc_duration_seconds{quantile="0.25"} 7.0512e-05
+go_gc_duration_seconds{quantile="0.5"} 0.000125282
+go_gc_duration_seconds{quantile="0.75"} 0.000200371
+go_gc_duration_seconds{quantile="1"} 0.000487721
+go_gc_duration_seconds_sum 0.003618512
+go_gc_duration_seconds_count 24
+```
+
+> Install the Prometheus Operator into the Kind cluster using the procedure in https://github.com/prometheus-operator/prometheus-operator/blob/main/Documentation/user-guides/getting-started.md. Chose the Operator over the Helm chart for `kube-prometheus-stack` to reduce the number of moving parts to configure.
+```
+$ LATEST=$(curl -s https://api.github.com/repos/prometheus-operator/prometheus-operator/releases/latest | jq -cr .tag_name)
+$ curl -sL https://github.com/prometheus-operator/prometheus-operator/releases/download/$LATEST/bundle.yaml | kubectl create -f -
+customresourcedefinition.apiextensions.k8s.io/alertmanagerconfigs.monitoring.coreos.com created
+customresourcedefinition.apiextensions.k8s.io/alertmanagers.monitoring.coreos.com created
+customresourcedefinition.apiextensions.k8s.io/podmonitors.monitoring.coreos.com created
+customresourcedefinition.apiextensions.k8s.io/probes.monitoring.coreos.com created
+customresourcedefinition.apiextensions.k8s.io/prometheuses.monitoring.coreos.com created
+customresourcedefinition.apiextensions.k8s.io/prometheusrules.monitoring.coreos.com created
+customresourcedefinition.apiextensions.k8s.io/servicemonitors.monitoring.coreos.com created
+customresourcedefinition.apiextensions.k8s.io/thanosrulers.monitoring.coreos.com created
+clusterrolebinding.rbac.authorization.k8s.io/prometheus-operator created
+clusterrole.rbac.authorization.k8s.io/prometheus-operator created
+deployment.apps/prometheus-operator created
+serviceaccount/prometheus-operator created
+service/prometheus-operator created
+
+$  kubectl get all
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/prometheus-operator-57df45d67c-x2h4t   1/1     Running   0          3m18s
+
+NAME                          TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)    AGE
+service/kubernetes            ClusterIP   10.96.0.1    <none>        443/TCP    5h15m
+service/prometheus-operator   ClusterIP   None         <none>        8080/TCP   3m18s
+
+NAME                                  READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/prometheus-operator   1/1     1            1           3m18s
+
+NAME                                             DESIRED   CURRENT   READY   AGE
+replicaset.apps/prometheus-operator-57df45d67c   1         1         1       3m18s
+```
+> Do the further configuration of Prometheus service accounts, cluster role, prometheus instance, etc. found here https://blog.container-solutions.com/prometheus-operator-beginners-guide
+
+> Most importantly, create the service monitor for the gaiad service:
+```
+$ tail -14 prometheus.yaml
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: gaiad-svc-monitor
+  namespace: gaiad
+  labels:
+    name: gaiad-svc-monitor
+spec:
+  selector:
+    matchLabels:
+      app: "gaiad"
+  endpoints:
+    - port: prometheus
+
+$ kubectl apply -f prometheus.yaml
+serviceaccount/prometheus created
+clusterrole.rbac.authorization.k8s.io/prometheus created
+clusterrolebinding.rbac.authorization.k8s.io/prometheus created
+prometheus.monitoring.coreos.com/prometheus created
+servicemonitor.monitoring.coreos.com/prometheus unchanged
+
+$ kubectl get prometheus
+kubectl get prometheus
+NAME         VERSION   DESIRED   READY   RECONCILED   AVAILABLE   AGE
+prometheus                       1       True         True        52s
+
+$ kubectl get prometheus
+NAME         VERSION   DESIRED   READY   RECONCILED   AVAILABLE   AGE
+prometheus                       1       True         True        71s
+
+$ kubectl get pods
+NAME                                   READY   STATUS    RESTARTS   AGE
+prometheus-operator-57df45d67c-x2h4t   1/1     Running   0          130m
+prometheus-prometheus-0                2/2     Running   0
+```
+
+> Pull up the Prometheus instance and confirm that it's scraping the gaiad endpoints you recently configured
+```
+$ kubectl get service
+NAME                  TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)    AGE
+kubernetes            ClusterIP   10.96.0.1    <none>        443/TCP    7h24m
+prometheus-operated   ClusterIP   None         <none>        9090/TCP   2m42s
+prometheus-operator   ClusterIP   None         <none>        8080/TCP   132m
+
+$ kubectl port-forward svc/prometheus-operated 9090:9090
+Forwarding from 127.0.0.1:9090 -> 9090
+Forwarding from [::1]:9090 -> 9090
+Handling connection for 9090
+```
+
+![prometheus screenshot](prometheus.png)
+
+## 4. Script kiddies: Source or come up with a text manipulation problem and solve it with at least two of awk, sed, tr and / or grep. Check the question below first though, maybe. [10pts]
 
 > Added `bitcoin.txt` (the original bitcoin paper)  and `count.sh` - a script that counts up and prints the occurrence of each word.  
 ```
@@ -207,7 +315,7 @@ $ ./count.sh | head
 '"b-money,"': 1
 '"tape",': 1
 ```
-5. Script grown-ups: Solve the problem in question 4 using any programming language you like. [15pts]
+## 5. Script grown-ups: Solve the problem in question 4 using any programming language you like. [15pts]
 
 > Wrote a bit of python code (`count.py`) to do a similar bit of work to the script above.
 ```
@@ -215,7 +323,7 @@ $ python ./count.py | cut -c1-200
 {'#': 1, 'Bitcoin:': 1, 'A': 8, 'Peer-to-Peer': 1, 'Electronic': 1, 'Cash': 1, 'System': 1, 'Satoshi': 1, 'Nakamoto': 1, 'satoshin@gmx.com': 1, 'www.bitcoin.org': 1, '**Abstract.**': 1, 'purely': 1, '
 ```
 
-6. Terraform lovers unite: write a Terraform module that creates the following resources in IAM;
+## 6. Terraform lovers unite: write a Terraform module that creates the following resources in IAM;
 - A role, with no permissions, which can be assumed by users within the same account,
 - A policy, allowing users / entities to assume the above role,
 - A group, with the above policy attached,
