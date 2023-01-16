@@ -195,12 +195,16 @@ $ ./count.sh | head
 ```
 5. Script grown-ups: Solve the problem in question 4 using any programming language you like. [15pts]
 
+> Wrote a bit of python code (`count.py`) to do a similar bit of work to the script above.
+```
+$ python ./count.py | cut -c1-200
+{'#': 1, 'Bitcoin:': 1, 'A': 8, 'Peer-to-Peer': 1, 'Electronic': 1, 'Cash': 1, 'System': 1, 'Satoshi': 1, 'Nakamoto': 1, 'satoshin@gmx.com': 1, 'www.bitcoin.org': 1, '**Abstract.**': 1, 'purely': 1, '
+```
+
 6. Terraform lovers unite: write a Terraform module that creates the following resources in IAM;
 - A role, with no permissions, which can be assumed by users within the same account,
 - A policy, allowing users / entities to assume the above role,
 - A group, with the above policy attached,
 - A user, belonging to the above group.
 
-All four entities should have the same name, or be similarly named in some meaningful way given the
-context e.g. prod-ci-role, prod-ci-policy, prod-ci-group, prod-ci-user; or just prod-ci. Make the suffixes
-toggleable, if you like. [25pts]
+All four entities should have the same name, or be similarly named in some meaningful way given the context e.g. prod-ci-role, prod-ci-policy, prod-ci-group, prod-ci-user; or just prod-ci. Make the suffixes toggleable, if you like. [25pts]
