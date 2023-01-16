@@ -54,6 +54,9 @@ RUN sed -i'' 's/trust_height = 0/trust_height = 13661483/' $HOME/.gaia/config/co
 RUN sed -i'' 's/trust_hash = ""/trust_hash = "B08A4F37082775988D2BDD0779C332AC964B15B55555E57AEA07F1D6E1E67F07"/' $HOME/.gaia/config/config.toml
 RUN sed -i'' 's/rpc_servers = ""/rpc_servers = "https:\/\/cosmos-rpc.polkachu.com:443,https:\/\/rpc-cosmoshub-ia.cosmosia.notional.ventures:443,https:\/\/rpc.cosmos.network:443"/' $HOME/.gaia/config/config.toml
 
+# Enable prometheus metrics
+RUN sed -i'' 's/prometheus = false/prometheus = true/' $HOME/.gaia/config/config.toml
+
 ## STAGE 3
 # Add to a distroless container
 FROM cgr.dev/chainguard/static:latest

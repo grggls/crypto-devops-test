@@ -164,8 +164,22 @@ Events:
   Normal  SuccessfulCreate  11m   statefulset-controller  create Pod gaiad-1 in StatefulSet gaiad successful
 ```
 
-3. All the observabilities: Alter the Gaia config file to enable prometheus metrics. Create a prometheus
-config or ServiceMonitor k8s resource to scrape the endpoint. [15 pts]
+3. All the observabilities: Alter the Gaia config file to enable prometheus metrics. Create a prometheus config or ServiceMonitor k8s resource to scrape the endpoint. [15 pts]
+
+> Enable prometheus metrics in the gaiad containers by updating the `config.toml`. Build a new version of the container and push it to Docker hub. We enabled rolling updates in our `StatefulSet`, so kill off one pod at a time to update them:
+```
+$ kubectl describe pod/gaiad-0 -n gaiad | grep Image
+    Image:          grggls/gaiad:latest
+    Image ID:       docker.io/grggls/gaiad@sha256:128b029a000d29351020c9ef54f3d59fce377bd6d42db1e69d3751d8b8589c8c
+
+$ kubectl delete pod/gaiad-0 -n gaiad
+pod "gaiad-0" deleted
+
+$ kubectl describe pod/gaiad-0 -n gaiad | grep Image
+    Image:          grggls/gaiad:latest
+    Image ID:       docker.io/grggls/gaiad@sha256:3a4715a94a70d672c03e40c1a4d8dd215a3c83e88d33851347cb01a5fef8e86f
+```
+> Repeat the process with the other container(s) in the StatefulSet and confirm they're running the latest version.
 
 4. Script kiddies: Source or come up with a text manipulation problem and solve it with at least two of awk,
 sed, tr and / or grep. Check the question below first though, maybe. [10pts]
