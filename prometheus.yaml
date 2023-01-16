@@ -58,14 +58,13 @@ spec:
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
-  name: prometheus
+  name: gaiad-svc-monitor
+  namespace: gaiad
   labels:
-    name: prometheus
+    name: gaiad-svc-monitor
 spec:
   selector:
     matchLabels:
-      app: gaiad
-  namespaceSelector:
-    any: true
+      app: "gaiad"
   endpoints:
-    - port: "26660"
+    - port: prometheus

@@ -176,7 +176,29 @@ $ kubectl describe pod/gaiad-0 -n gaiad | grep Image
     Image:          grggls/gaiad:latest
     Image ID:       docker.io/grggls/gaiad@sha256:3a4715a94a70d672c03e40c1a4d8dd215a3c83e88d33851347cb01a5fef8e86f
 ```
-> Repeat the process with the other container(s) in the StatefulSet and confirm they're running the latest version.
+> Repeat the process with the other container(s) in the StatefulSet and confirm they're running the latest version. Soon you'll be able to confirm that prometheus metrics are being exported from your pods:
+```
+$ kubectl get service -n gaiad
+NAME    TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)                                  AGE
+gaiad   ClusterIP   None         <none>        26656/TCP,26657/TCP,1317/TCP,26660/TCP   7h4m
+
+$ kubectl port-forward svc/gaiad -n gaiad 26660:26660
+Forwarding from 127.0.0.1:26660 -> 26660
+Forwarding from [::1]:26660 -> 26660
+Handling connection for 26660
+Handling connection for 26660
+
+$ curl -s localhost:26660 | head
+# HELP go_gc_duration_seconds A summary of the pause duration of garbage collection cycles.
+# TYPE go_gc_duration_seconds summary
+go_gc_duration_seconds{quantile="0"} 2.5441e-05
+go_gc_duration_seconds{quantile="0.25"} 7.0512e-05
+go_gc_duration_seconds{quantile="0.5"} 0.000125282
+go_gc_duration_seconds{quantile="0.75"} 0.000200371
+go_gc_duration_seconds{quantile="1"} 0.000487721
+go_gc_duration_seconds_sum 0.003618512
+go_gc_duration_seconds_count 24
+```
 
 > Install the Prometheus Operator into the Kind cluster using the procedure in https://github.com/prometheus-operator/prometheus-operator/blob/main/Documentation/user-guides/getting-started.md. Chose the Operator over the Helm chart for `kube-prometheus-stack` to reduce the number of moving parts to configure.
 ```
@@ -211,7 +233,25 @@ NAME                                             DESIRED   CURRENT   READY   AGE
 replicaset.apps/prometheus-operator-57df45d67c   1         1         1       3m18s
 ```
 > Do the further configuration of Prometheus service accounts, cluster role, prometheus instance, etc. found here https://blog.container-solutions.com/prometheus-operator-beginners-guide
+
+> Most importantly, create the service monitor for the gaiad service:
 ```
+$ tail -14 prometheus.yaml
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: gaiad-svc-monitor
+  namespace: gaiad
+  labels:
+    name: gaiad-svc-monitor
+spec:
+  selector:
+    matchLabels:
+      app: "gaiad"
+  endpoints:
+    - port: prometheus
+
 $ kubectl apply -f prometheus.yaml
 serviceaccount/prometheus created
 clusterrole.rbac.authorization.k8s.io/prometheus created
@@ -232,7 +272,10 @@ $ kubectl get pods
 NAME                                   READY   STATUS    RESTARTS   AGE
 prometheus-operator-57df45d67c-x2h4t   1/1     Running   0          130m
 prometheus-prometheus-0                2/2     Running   0
+```
 
+> Pull up the Prometheus instance and confirm that it's scraping the gaiad endpoints you recently configured
+```
 $ kubectl get service
 NAME                  TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)    AGE
 kubernetes            ClusterIP   10.96.0.1    <none>        443/TCP    7h24m
@@ -244,6 +287,8 @@ Forwarding from 127.0.0.1:9090 -> 9090
 Forwarding from [::1]:9090 -> 9090
 Handling connection for 9090
 ```
+
+![prometheus screenshot](prometheus.png)
 
 ## 4. Script kiddies: Source or come up with a text manipulation problem and solve it with at least two of awk, sed, tr and / or grep. Check the question below first though, maybe. [10pts]
 
