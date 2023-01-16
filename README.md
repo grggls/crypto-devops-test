@@ -170,6 +170,29 @@ config or ServiceMonitor k8s resource to scrape the endpoint. [15 pts]
 4. Script kiddies: Source or come up with a text manipulation problem and solve it with at least two of awk,
 sed, tr and / or grep. Check the question below first though, maybe. [10pts]
 
+> Added `bitcoin.txt` (the original bitcoin paper)  and `count.sh` - a script that counts up and prints the occurrence of each word.  
+```
+$ head bitcoin.txt
+# Bitcoin: A Peer-to-Peer Electronic Cash System
+
+Satoshi Nakamoto
+satoshin@gmx.com
+www.bitcoin.org
+
+**Abstract.** A purely peer-to-peer version of electronic cash
+
+$ ./count.sh | head
+'': 211
+'"An': 1
+'"Design': 1
+'"Hashcash': 1
+'"How': 1
+'"Improving': 1
+'"Protocols': 1
+'"Secure': 1
+'"b-money,"': 1
+'"tape",': 1
+```
 5. Script grown-ups: Solve the problem in question 4 using any programming language you like. [15pts]
 
 6. Terraform lovers unite: write a Terraform module that creates the following resources in IAM;
