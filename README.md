@@ -330,3 +330,25 @@ $ python ./count.py | cut -c1-200
 - A user, belonging to the above group.
 
 All four entities should have the same name, or be similarly named in some meaningful way given the context e.g. prod-ci-role, prod-ci-policy, prod-ci-group, prod-ci-user; or just prod-ci. Make the suffixes toggleable, if you like. [25pts]
+
+> This directory has a terraform `main.tf` file in it. Real AWS credential will need to be added for this to be testable:
+```
+terraform {
+  required_providers {
+    aws = {
+      source = "hashicorp/aws"
+    }
+  }
+}
+
+# Configure the AWS Provider
+provider "aws" {
+  region     = "ap-southeast-2"
+  access_key = "AKIA1234567890123456"
+  secret_key = "qwertyabcdefghijklmnopqr0x10101"
+}
+module "prod-ci-module" {
+  source = "./terraform-module"
+}
+```
+> The source `./terraform-module` directory contains the solution to this document. This was a quick and dirty solution to the Challenge. Making roles and policies in terraform requires much more thorough policy, review, and care. Credentials shouldn't be stored in source. Auditability requires that permission changes, users, access rights require review and documentation, etc.
